@@ -1,9 +1,10 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Net;
 using System.Security.Claims;
 using Content.Server.Database;
 using Content.Shared.Database;
 using Microsoft.EntityFrameworkCore;
+using static SS14.Admin.Pages.BansModel;
 using WhitelistJoin = SS14.Admin.Helpers.WhitelistHelper.WhitelistJoin;
 
 namespace SS14.Admin.Helpers;
@@ -85,7 +86,11 @@ public static class SearchHelper
         var expr = MakeCommonBanSearchExpression(search, user);
 
         // Match role name exactly.
-        CombineSearch(ref expr, u => u.Ban.Roles!.Any(r => r.RoleId == search));
+        // CombineSearch(ref expr, u => u.Ban.Roles!.Any(r => r.RoleId == search));
+        CombineSearch(ref expr, u =>
+        (u.Ban.Type == BanType.Role && u.Ban.Roles!.OfType<BanRole>().Any(r => r.RoleId == search)) ||
+        (u.Ban.Type == BanType.Species && u.Ban.Roles!.OfType<BanSpecie>().Any(bs => bs.SpecieId == search)) ||
+        (u.Ban.Type == BanType.Chat && u.Ban.Roles!.OfType<BanChat>().Any(bc => bc.Chat == search)));
 
         return query.Where(expr);
     }

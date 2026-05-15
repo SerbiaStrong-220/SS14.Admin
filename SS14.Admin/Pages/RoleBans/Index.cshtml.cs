@@ -1,4 +1,5 @@
-﻿using Content.Server.Database;
+using Content.Server.Database;
+using Content.Shared.Database;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -106,7 +107,7 @@ public class Index : PageModel
         sortState.AddColumnMultiple("round", p => p.Ban.Rounds!.Select(r => r.RoundId));
         // sortState.AddColumn("expire_time", p => p.ban.Unban == null ? p.ban.ExpirationTime : p.ban.Unban!.UnbanTime);
         sortState.AddColumn("admin", p => p.Admin!.LastSeenUserName);
-        sortState.AddColumnMultiple("role", p => p.Ban.Roles!.Select(br => string.Concat(br.RoleType, ":", br.RoleId)));
+        sortState.AddColumnMultiple("role", p => GetBanRoles(p.Ban));
         sortState.Init(sort, allRouteData);
 
         bans = sortState.ApplyToQuery(bans);
@@ -134,11 +135,32 @@ public class Index : PageModel
                 BanHelper.IsBanActive(b.Ban),
                 b.Ban.BanTime,
                 b.Admin?.LastSeenUserName,
-                b.Ban.Roles!.Select(br => string.Concat(br.RoleType, ":", br.RoleId)).ToArray(),
+                GetBanRoles(b.Ban).ToArray(), // SS220-abstract-ban-role
                 b.Ban.Rounds!.Select(r => r.RoundId).ToArray());
         }));
 
         return sortState;
+    }
+
+    private static IEnumerable<string> GetBanRoles(Ban ban)
+    {
+        // SS220-abstract-ban-role
+        if (ban.Type == BanType.Role)
+        {
+            return ban.Roles!.OfType<BanRole>().Select(br => string.Concat(br.RoleType, ":", br.RoleId)); // SS220-abstract-ban-role
+        }
+        // SS220-specie-chat-ban-begin
+        else if (ban.Type == BanType.Species)
+        {
+            return ban.Roles!.OfType<BanSpecie>().Select(bs => bs.SpecieId);
+        }
+        else if (ban.Type == BanType.Chat)
+        {
+            return ban.Roles!.OfType<BanChat>().Select(bc => bc.Chat);
+        }
+
+        return [];
+        // SS220-specie-chat-ban-end
     }
 
     public sealed record RoleBan(
